@@ -1,20 +1,32 @@
 CFLAGS=-Wall -Wno-main -g -Isrc -Iunity -Igen -Icmock
 
-all: test run
+.PHONY: all bl_formatter_test run_bl_demo bl_demo_map clean bl_demo_message
 
-test:
+all: bl_formatter_test run_bl_demo
+
+bl_formatter_test:
+	@echo === Executing unit tests of bl_formatter.rb, the Ruby script that converts binary output from the device into human-readable messages
 	ruby test/bl_formatter_test.rb
 
-bl_test: src/binary_logger.o test/bl_environment_test.o test/test.o test/test2.o
-	gcc $(CFLAGS) -o $@ $^
+# Run demo of binary logger
+run_bl_demo: bl_demo_message bl_demo bl_demo_map
+	@echo === Executing the demo program
+	./bl_demo > trace.bin
+	@echo === Transforming binary output of demo program into human-readable messages
+	ruby scripts/bl_formatter.rb bl_demo_map.yaml trace.bin
 
-run: bl_test
-	find test -name "*.c" | ruby scripts/bl_map.rb > bl_map.yaml
-	./bl_test > trace.bin
-	ruby scripts/bl_formatter.rb bl_map.yaml trace.bin
+bl_demo_message:
+	@echo === Building demo program
 
-.PHONY: test
+bl_demo_map:
+	@echo === Building table of all log messages in sources of demo program
+	find test -name "*.c" | ruby scripts/bl_map.rb > bl_demo_map.yaml
+
+bl_demo: src/binary_logger.o test/bl_environment_test.o test/test.o test/test2.o
+	$(CC) $(CFLAGS) -o $@ $^
 
 clean:
-	rm -f src/*.o test/*.o bl_test bl_map.yaml trace.bin
+	@echo === Cleaning up
+	rm -f src/*.o test/*.o bl_demo bl_demo_map.yaml trace.bin
 	rm -f *~ */*~
+
